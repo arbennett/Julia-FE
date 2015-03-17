@@ -1,6 +1,8 @@
 ## gmsh.jl
 #
 # Provides functionality for integrating gmsh meshes into Julia
+# Currently this module does not differentiate between element 
+# types.
 #
 # TODO: 
 #    Update to handle PhysicalNames and ElementNodeData
@@ -16,17 +18,19 @@ module gmsh
 #  The mesh datatype holds the information needed to define the mesh.
 #
 type Mesh
-    n_nodes :: Int64
-    n_elements :: Int64
-    nodes :: Array{Float64, 2}
-    elements :: Array{Float64, 2}
+    n_nodes::Int64
+    n_elements::Int64
+    nodes::Array{Float64, 2}
+    boundary_nodes::Array{Int64}
+    elements::Array{Float64, 2}
 
     Mesh(
          n_nodes::Int64,
          n_elements::Int64,
          nodes::Array{Float64,2},
+         boundary_nodes::Array{Int64},
          elements::Array{Float64, 2}
-        ) = new(n_nodes, n_elements, nodes, elements)
+        ) = new(n_nodes, n_elements, nodes, boundary_nodes, elements)
 end
 
 
@@ -129,24 +133,56 @@ function read(file_name::ASCIIString)
 
     # Get the number of elements
     idx += 1
-    n_elements = int(file_lines[idx])
+    n_elem_entries::Int64 = int(file_lines[idx])
     
     # Determine how many columns of space needed to store element data
+    # and the number of elements/boundaries on the mesh
     n_cols::Int64 = 0
-    for i = 1:n_elements
-        n_cols = max(n_cols, length(split(file_lines[idx + i]))-1)
+    n_elems::Int64 = 0
+    n_bc_nodes::Int64 = 0
+    n_bc_edges::Int64 = 0
+    for i = 1:n_elem_entries
+        split_line = split(file_lines[idx + i])
+        # Determine what kind of element we are on 
+        if split_line[2] == "1"
+            # Edge with boundary condition
+            n_bc_edges += 1
+        elseif split_line[2] == "15"
+            # Node with boundary condition
+            n_bc_nodes += 1
+        else
+            # Regular element
+            n_elems += 1
+            n_cols = max(n_cols, length(split_line)-1)
+        end    
     end
 
-    # Pull the element data
-    elements = zeros(n_elements, n_cols)
-    for i = 1:n_elements
+    # Pull the element and boundary data
+    elements::Array{Float64, 2} = zeros(n_elems, n_cols)
+    boundary_nodes::Array{Int64} = zeros(Int64, n_bc_nodes)
+    boundary_edges::Array{Int64, 2} = zeros(Int64, n_bc_edges, 2)
+    elem_idx::Int64, bc_node_idx::Int64, bc_edge_idx::Int64 = 0, 0, 0 
+    for i = 1:n_elem_entries
         idx += 1
-        len = length(split(file_lines[idx])) - 1 
-        elements[i,1:len] = int(split(file_lines[idx]))[2:end] 
+        split_line = split(file_lines[idx])
+        # Determine what kind of element we are on 
+        if split_line[2] == "1"
+            # Edge with boundary condition
+            bc_edge_idx += 1
+            boundary_edges[bc_edge_idx] = int(split_line)[end-1,end]
+        elseif split_line[2] == "15"
+            # Node with boundary condition
+            bc_node_idx += 1
+            boundary_nodes[bc_node_idx] = int(split_line)[end]
+        else
+            # Regular element
+            elem_idx += 1           
+            elements[elem_idx,1:length(split_line) - 1 ] = int(split_line)[2:end]
+        end    
     end
     
     # Create the mesh and return it
-    return Mesh(n_nodes, n_elements, nodes, elements)
+    return Mesh(n_nodes, n_elems, nodes, boundary_nodes, elements)
 end
 
 
