@@ -71,9 +71,9 @@ function solve(mesh::Mesh, stiffness::Function, bc::Function, ext_force::Functio
 	
 	stiffness = sparse(nodes_i, nodes_j, vals, size, size)
 	
-	U = K\F
+	U = stiffness\load
 	
-	return U		
+	return U
 end
 
 
