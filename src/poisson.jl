@@ -31,7 +31,7 @@ end
 function poisson(file_path, size=20)
   t0 = time()
   mesh = gmsh.read(file_path)
-  #u = solver.solve(mesh, stiffness, boundaryCondition, externalForce)
+  u = solver.solve(mesh, stiffness, boundaryCondition, externalForce)
   t1 = time()
   
   println("Time elapsed: ", t1-t0, "s")
