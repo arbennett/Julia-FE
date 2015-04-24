@@ -9,7 +9,7 @@
 cwd = dirname(Base.source_path())
 cd(cwd)
 
-require("gmsh.jl")
+require("solver.jl")
 
 ## The stiffness for Poisson's equation
 function stiffness(dphi, i, j)
@@ -30,11 +30,14 @@ end
 #
 function poisson(file_path, size=20)
   t0 = time()
+
+  println("Reading in mesh....")
   mesh = gmsh.read(file_path)
-  u = solver.solve(mesh, stiffness, boundaryCondition, externalForce)
+
+  println("Begininning solver routines....")
+  u = solve(mesh, stiffness, boundaryCondition, externalForce)
   t1 = time()
-  
+  println(u)
   println("Time elapsed: ", t1-t0, "s")
   # WRITE THE SOLUTION TO A FILE FOR VIS
 end
-
