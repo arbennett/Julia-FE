@@ -21,6 +21,7 @@ type Mesh
     n_nodes::Int64
     n_elements::Int64
     nodes::Array{Float64, 2}
+    internal_nodes::Array{Int64}
     boundary_nodes::Array{Int64}
     elements::Array{Int64, 2}
 
@@ -28,9 +29,10 @@ type Mesh
          n_nodes::Int64,
          n_elements::Int64,
          nodes::Array{Float64,2},
+         internal_nodes::Array{Int64},
          boundary_nodes::Array{Int64},
          elements::Array{Int64, 2}
-        ) = new(n_nodes, n_elements, nodes, boundary_nodes, elements)
+        ) = new(n_nodes, n_elements, nodes, internal_nodes, boundary_nodes, elements)
 end
 
 
@@ -181,8 +183,18 @@ function read(file_name::ASCIIString)
         end
     end
 
+    # Build the list of internal nodes
+    internal_nodes::Array{Int64} = zeros(Int64, n_nodes - n_bc_nodes)
+    i=1
+    for node = 1:n_nodes
+      if !in(node, boundary_nodes)
+        internal_nodes[i] = node
+        i+=1
+      end
+    end
+
     # Create the mesh and return it
-    return Mesh(n_nodes, n_elems, nodes, boundary_nodes, elements)
+    return Mesh(n_nodes, n_elems, nodes, internal_nodes, boundary_nodes, elements)
 end
 
 
