@@ -6,4 +6,4 @@ If you want to run a sample you can use:
 
 `julia src/test.jl`
 
-`python2.7 src.plot.py`
+`python2.7 src/plot.py`
