@@ -13,26 +13,17 @@ require("gmsh.jl")
 #
 #  Definition of the C0 finite element space
 #
-type Solution_Space
-    mesh::gmsh.Mesh
-    node_vals::Array{Float64}
+# Build the initial solution space with boundary conditions imposed
+function assemble_solution_space(mesh::gmsh.Mesh, boundaryCondition::Function)
+    node_vals = zeros(Float64, mesh.n_nodes)
 
-    # Build the initial solution space with boundary conditions imposed
-    function Solution_Space(mesh::gmsh.Mesh, boundaryCondition::Function)
-        n_nodes = mesh.n_nodes
-        node_vals = zeros(Float64, n_nodes)
-
-        # Go through and set up the boundary conditions
-        for i = 1:mesh.n_nodes
-            x = mesh.nodes[i,1]
-            y = mesh.nodes[i,2]
-            if i in mesh.boundary_nodes
-                node_vals[i] = boundaryCondition(x,y)
-            end
-        end
-
-        new(mesh, node_vals)
+    # Go through and set up the boundary conditions
+    for i in mesh.boundary_nodes
+        x = mesh.nodes[i,1]
+        y = mesh.nodes[i,2]
+        node_vals[i] = boundaryCondition(x,y)
     end
+    return node_vals
 end
 
 
@@ -60,7 +51,7 @@ const dpsi3_deta = 1.0
 function solve(mesh::gmsh.Mesh, stiffness::Function, bc::Function, ext_force::Function)
 
     println("Assembling solution space....")
-    u = Solution_Space(mesh, bc)
+    u = assemble_solution_space(mesh, bc)
 
     println("Assembling load vector and stiffness matrix....")
     stiffness, load = assemble_matrices(mesh, u, stiffness, ext_force)
@@ -74,10 +65,10 @@ end
 
 ## Build the stiffness matrix and load vector
 #
-function assemble_matrices(mesh::gmsh.Mesh, field::Solution_Space, stiffness::Function, externalForce::Function)#, F::Array{Float64,1})
-    n_boundary::Int64 = length(field.mesh.boundary_nodes)
-    size::Int64 = field.mesh.n_nodes - n_boundary
-    b_nodes::Array{Int64} = field.mesh.boundary_nodes
+function assemble_matrices(mesh::gmsh.Mesh, field::Array{Float64,1}, stiffness::Function, externalForce::Function)#, F::Array{Float64,1})
+    n_boundary::Int64 = length(mesh.boundary_nodes)
+    size::Int64 = mesh.n_nodes - n_boundary
+    b_nodes::Array{Int64} = mesh.boundary_nodes
     global_load::Array{Float64} = zeros(size)
     count::Int64 = 0
 
@@ -95,7 +86,7 @@ function assemble_matrices(mesh::gmsh.Mesh, field::Solution_Space, stiffness::Fu
     stiff = zeros(3,3)
     load = zeros(3)
 
-    for elemIdx = 1:field.mesh.n_elements
+    for elemIdx = 1:mesh.n_elements
         # Get element nodes, and their locations
         elem_nodes = mesh.elements[elemIdx,:]
         x1, y1 = mesh.nodes[elem_nodes[1],:]
@@ -139,15 +130,15 @@ function assemble_matrices(mesh::gmsh.Mesh, field::Solution_Space, stiffness::Fu
 
         # Use local stiffness and load to build the global versions
         for i = 1:3
-            position_i = findin(field.mesh.internal_nodes, elem_nodes[i])
+            position_i = findin(mesh.internal_nodes, elem_nodes[i])
             if length(position_i) > 0
                 global_load[position_i[1]] += load[i]
                 for j = 1:3
-                    position_j = findin(field.mesh.internal_nodes, elem_nodes[j])
+                    position_j = findin(mesh.internal_nodes, elem_nodes[j])
                     if length(position_j) > 0
                         vals[position_i[1], position_j[1]] += stiff[i,j]
                     else
-                        global_load[position_i[1]] -= stiff[i,j] * field.node_vals[elem_nodes[j]]
+                        global_load[position_i[1]] -= stiff[i,j] * field[elem_nodes[j]]
                     end
                 end
             end
