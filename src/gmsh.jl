@@ -4,10 +4,6 @@
 # Currently this module does not differentiate between element
 # types.
 #
-# TODO:
-#    Update to handle PhysicalNames and ElementNodeData
-#    Test how bad this is for really big files
-#
 # @author: arbennett
 #
 module gmsh
@@ -29,37 +25,10 @@ type Mesh
          n_nodes::Int64,
          n_elements::Int64,
          nodes::Array{Float64,2},
-         internal_nodes::Array{Int64},
-         boundary_nodes::Array{Int64},
-         elements::Array{Int64, 2}
+         internal_nodes::Array{Int64,1},
+         boundary_nodes::Array{Int64,1},
+         elements::Array{Int64,2}
         ) = new(n_nodes, n_elements, nodes, internal_nodes, boundary_nodes, elements)
-end
-
-
-## elementTypes
-#
-#  An enum like structure for mapping the element types to their descriptions
-#
-baremodule elementTypes
-    const LINE = 1
-    const TRIANGLE = 2
-    const QUADRANGLE = 3
-    const TETRAHEDRON = 4
-    const HEXAHEDRON = 5
-    const PRISM = 6
-    const PYRAMID = 7
-    const LINE_3_ND = 8
-    const TRIANGLE_6_ND = 9
-    const QUADRANGLE_9_ND = 10
-    const TET_10_ND = 11
-    const HEX_27_ND = 12
-    const PRISM_18_ND = 13
-    const PYRAMID_14_ND = 14
-    const POINT = 15
-    const QUADRANGLE_8_ND = 16
-    const HEX_20_ND = 17
-    const PRISM_15_ND = 18
-    const PYRAMID_13_ND = 19
 end
 
 
@@ -112,7 +81,7 @@ function read(file_name::ASCIIString)
 
     # Get the number of nodes
     idx += 1
-    n_nodes = int(file_lines[idx])
+    n_nodes::Int64 = int(file_lines[idx])
 
     # Read in the node data
     nodes = Array(Float64, n_nodes, 3)
@@ -198,4 +167,4 @@ function read(file_name::ASCIIString)
 end
 
 
-  end # End module gmsh
+end # End module gmsh

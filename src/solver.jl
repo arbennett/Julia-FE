@@ -1,12 +1,12 @@
 ## solver.jl
 #
 #  The solver for the finite element method.  Currently this
-#  solver implements the METHOD TYPE HERE on triangular elements
+#  solver handles Poisson's equation on triangular elements
 #  with a single quadrature point.
 #
-#  @author Andrew Bennett
+#  @author arbennett
 #
-require("gmsh.jl")
+using gmsh
 
 
 ## Finite element space
@@ -55,11 +55,13 @@ function solve(mesh::gmsh.Mesh, stiffness::Function, bc::Function, ext_force::Fu
 
     println("Assembling load vector and stiffness matrix....")
     stiffness, load = assemble_matrices(mesh, u, stiffness, ext_force)
-
-    println("Solving linear system....")
     U = stiffness\load
+    
+    for (idx, val) in zip(u.mesh.internal_nodes, U)
+        u.node_vals[idx] = val
+    end
 
-    return U
+    return u.mesh.nodes, u.node_vals
 end
 
 
@@ -144,6 +146,6 @@ function assemble_matrices(mesh::gmsh.Mesh, field::Array{Float64,1}, stiffness::
             end
         end
     end
-
+    
     return vals, global_load
 end
